@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Numerics;
 using System.Collections.Generic;
@@ -18,69 +18,84 @@ public class MinimaxResult
 }
 public class MyBot : IChessBot
 {
-    bool botIsWhite;
-    Dictionary<string, int[]> WhitePieceBonuses = new Dictionary<string, int[]>
-    {
-        { "Pawn", new int[] {
-                            0  ,0  ,0  ,0  ,0  ,0  ,0  ,0  ,
-                            70 ,70 ,70 ,70 ,70 ,70 ,70 ,70 ,
-                            60 ,60 ,60 ,60 ,60 ,60 ,60 ,60 ,
-                            30 ,30 ,30 ,30 ,30 ,30 ,30 ,30 ,
-                            0  ,0  ,0  ,50 ,50 ,0  ,0  ,0  ,
-                            0  ,0  ,25 ,25 ,25 ,25  ,0  ,0 ,
-                            0  ,0  ,0  ,0  ,0  ,0  ,0  ,0  ,
-                            0  ,0  ,0  ,0  ,0  ,0  ,0  ,0}},
-        { "Knight", new int[] {
-                            -50   ,-25,-25,-25,-25,-25,-25,-50  ,
-                            -50   ,0  ,0  ,0  ,0  ,0  ,0  ,-50 ,
-                            -50   ,0  ,0  ,0  ,0  ,0  ,0  ,-50 ,
-                            -50   ,0  ,0  ,5  ,5  ,0  ,0  ,-50 ,
-                            -50   ,0  ,0  ,0  ,0  ,0  ,0  ,-50  ,
-                            -50   ,0  ,20 ,0  ,0  ,20 ,0  ,-50 ,
-                            -50   ,0  ,15 ,0  ,0  ,15 ,0 ,-50  ,
-                            -100  ,0  ,0  ,0  ,0  ,0  ,0  ,-100}},
-        { "King", new int[] {
-                            -90,-90,-90,-90,-90,-90,-90,-90,
-                            -80,-80,-80,-80,-80,-80,-80,-80,
-                            -50,-50,-50,-50,-50,-50,-50,-50,
-                            -30,-30,-30,-30,-30,-30,-30,-30,
-                            -20,-20,-20,-20,-20,-20,-20,-20,
-                            -20,-20,-20,-20,-20,-20,-20,-20,
-                            -10,-10 ,-10 ,-10,-10,-10,-10,-10,
-                            -10,0  ,70  ,0  ,0  ,0  ,70  ,-10
-        }}
+    private Dictionary<ulong, MinimaxResult> transpositionTable= new Dictionary<ulong, MinimaxResult>();
+
+    Dictionary<string, int[]> scoreTable= new Dictionary<string, int[]>{
+        {"Pawn", new int[] {
+            100, 100, 100, 100, 100, 100, 100, 100,
+            50,  50,  50,  50,  50,  50,  50,  50,
+            10,  10,  20,  30,  30,  20,  10,  10,
+            5,   5,   10,  25,  25,  10,  5,   5,
+            0,   0,   0,   20,  20,  0,   0,   0,
+            5,  -5,  -10,  0,   0,  -10, -5,   5,
+            5,  10,  10, -20, -20,  10,  10,  5,
+            0,   0,   0,   0,   0,   0,   0,   0
+        }},
+        {"Knight", new int[] {
+            -50, -40, -30, -30, -30, -30, -40, -50,
+            -40, -20,   0,   0,   0,   0, -20, -40,
+            -30,   0,  10,  15,  15,  10,   0, -30,
+            -30,   -10,  0,  20,  20,  0,   -10, -30,
+            -30,   0,  15,  20,  20,  15,   0, -30,
+            -30,   5,  10,  15,  15,  10,   5, -30,
+            -40, -20,   0,   5,   5,   0, -20, -40,
+            -50, -40, -30, -30, -30, -30, -40, -50
+        }},
+        {"Bishop", new int[] {
+            -20, -10, -10, -10, -10, -10, -10, -20,
+            -10,   0,   0,   0,   0,   0,   0, -10,
+            -10,   0,   5,  10,  10,   5,   0, -10,
+            -10,   5,   5,  10,  10,   5,   5, -10,
+            -10,   0,  10,  10,  10,  10,   0, -10,
+            -10,  10,  10,  10,  10,  10,  10, -10,
+            -10,   5,   0,   0,   0,   0,   5, -10,
+            -20, -10, -10, -10, -10, -10, -10, -20
+        }},
+        {"Rook", new int[] {
+            0,   0,   0,   0,   0,   0,   0,   0,
+            5,  10,  10,  10,  10,  10,  10,   5,
+            -5,   0,   0,   0,   0,   0,   0,  -5,
+            -5,   0,   0,   0,   0,   0,   0,  -5,
+            -5,   0,   0,   0,   0,   0,   0,  -5,
+            -5,   0,   0,   0,   0,   0,   0,  -5,
+            -5,   0,   0,   0,   0,   0,   0,  -5,
+            0,   0,   0,   5,   5,   0,   0,   0
+        }},
+        {"Queen", new int[]{
+            -20, -10, -10,  -5,  -5, -10, -10, -20,
+            -10,   0,   0,   0,   0,   0,   0, -10,
+            -10,   0,   5,   5,   5,   5,   0, -10,
+            -5,   0,   5,   5,   5,   5,   0,  -5,
+            0,   0,   5,   5,   5,   5,   0,  -5,
+            -10,   5,   5,   5,   5,   5,   0, -10,
+            -10,   0,   5,   0,   0,   0,   0, -10,
+            -20, -10, -10,  -5,  -5, -10, -10, -20
+        }},
+        {"King", new int[] {
+            -10,   -10,   0,   0,   0,   0,   0,  0,
+            0,   0,   0,   0,   0,   0,   0,  0,
+            0,   0,   0,   0,   0,   0,   0,  0,
+            0,   0,   0,   0,   0,   0,   0,  0,
+            0,   0,   0,   0,   0,   0,   0,  0,
+            0,   0,   0,   0,   0,   0,   0,  0,
+            -10,   -10,   -10,   -10,   -10,   -10,   -10,  -10,
+            25,   75,   10,   -75, -25,   10,   75,   25
+        }},
     };
-    
-    Dictionary<string, int[]> BlackPieceBonuses = new Dictionary<string, int[]>
-    {
-        { "Pawn", new int[]{0,0,0,0,0,0,0,0,
-                            0,0,0,0,0,0,0,0,
-                            0  ,0  ,25 ,25 ,25 ,25  ,0  ,0 ,
-                            0,0,0,50,50,0,0,0,
-                            30,30,30,30,30,30,30,30,
-                            60 ,60 ,60 ,60 ,60 ,60 ,60 ,60 ,
-                            70 ,70 ,70 ,70 ,70 ,70 ,70 ,70 ,
-                            0  ,0  ,0  ,0  ,0  ,0  ,0  ,0}},
-        { "Knight", new int[] {
-                            -100  ,0  ,0  ,0  ,0  ,0  ,0  ,-100,
-                            -50   ,0  ,15 ,0  ,0  ,15 ,0  ,-50 ,
-                            -50   ,0  ,20 ,0  ,0  ,20 ,0  ,-50 ,
-                            -50   ,0  ,0  ,0  ,0  ,0  ,0  ,-50 ,
-                            -50   ,0  ,0  ,5  ,5  ,0  ,0  ,-50 ,
-                            -50   ,0  ,0  ,0  ,0  ,0  ,0  ,-50 ,
-                            -50   ,0  ,0  ,0  ,0  ,0  ,0  ,-50 ,
-                            -50   ,-25,-25,-25,-25,-25,-25,-50}},
-        { "King", new int[] {
-                            -10,0  ,70  ,0  ,0  ,0  ,70  ,-10
-                            -10,-10 ,-10 ,-10,-10,-10,-10,-10,
-                            -20,-20,-20,-20,-20,-20,-20,-20,
-                            -20,-20,-20,-20,-20,-20,-20,-20,
-                            -30,-30,-30,-30,-30,-30,-30,-30,
-                            -50,-50,-50,-50,-50,-50,-50,-50,
-                            -80,-80,-80,-80,-80,-80,-80,-80,
-                            -90,-90,-90,-90,-90,-90,-90,-90
-        }}
-    };
+    public int[] flipDictionary(int[] dictionary){
+        int[] flippedArray = new int[dictionary.Length];
+        int rows = 8;
+        int cols = 8;
+        for (int row = 0; row < rows; row++)
+        {
+            for (int col = 0; col < cols; col++)
+            {
+                flippedArray[row * cols + (cols - 1 - col)] = dictionary[row * cols + col];
+            }
+        }
+
+        return flippedArray;
+    }
     public int ForceKingToCorner(Board board, Square friendlyKingSquare, Square opponentKingSquare, float endGameWeight){
         int eval=0;
 
@@ -101,16 +116,11 @@ public class MyBot : IChessBot
     }
     public Move Think(Board board, Timer timer)
     {
-        botIsWhite = board.IsWhiteToMove;
+        bool botIsWhite = board.IsWhiteToMove;
         Random random = new Random();
         Move[] moves = board.GetLegalMoves();
         int randomNumber = random.Next(moves.Length);
-        MinimaxResult result = Minimax(board, 4, botIsWhite, int.MinValue, int.MaxValue);
-        if(result.evaluation==int.MaxValue || result.evaluation==int.MinValue){
-            Log($"CHECKMATE | {result.move}");
-        }else{
-            Log($"{result.evaluation} | {result.move}");
-        }
+        MinimaxResult result = Minimax(board, 3, botIsWhite, int.MinValue, int.MaxValue);
         
         if(result.move==Move.NullMove){
             return moves[0];
@@ -139,56 +149,21 @@ public class MyBot : IChessBot
                 return 0; // Default value if pieceName does not match any case
         }
     }
-    public int ForceKingEval(Board board){
+    public int ForceKingEval(Board board, bool botIsWhite){
         int eval=0;
-
+        int multiplier=1;
+        if(!botIsWhite){
+            multiplier=-1;
+        }
+        
+        if(board.HasQueensideCastleRight(botIsWhite)){
+            eval+=250*multiplier;
+        }
+         if(board.HasKingsideCastleRight(botIsWhite)){
+            eval+=250*multiplier;
+        }
         eval+=ForceKingToCorner(board, board.GetKingSquare(botIsWhite), board.GetKingSquare(!botIsWhite), CalculateEndGameWeight(board));
         return eval;
-    }
-    public int PieceBonus_OPENING(Board board){
-        PieceList[] PieceLists = board.GetAllPieceLists();
-        int Evaluate=0;
-        foreach(PieceList pieceList in PieceLists){
-            for(int i=0; i<pieceList.Count; i++){
-                Piece piece = pieceList.GetPiece(i);
-                bool PieceColor=piece.IsWhite;
-                if(piece.IsPawn){
-                    
-                    if (PieceColor){
-                        int PieceValue = BlackPieceBonuses["Pawn"][piece.Square.Index];
-                        Evaluate+=PieceValue;
-                    }else{
-                        int PieceValue = WhitePieceBonuses["Pawn"][piece.Square.Index];
-                        Evaluate-=PieceValue;
-                    }
-
-                }
-                if(piece.IsKnight){
-                    
-                    if (PieceColor){
-                        int PieceValue = BlackPieceBonuses["Knight"][piece.Square.Index];
-                        Evaluate+=PieceValue;
-                    }else{
-                        int PieceValue = WhitePieceBonuses["Knight"][piece.Square.Index];
-                        Evaluate-=PieceValue;
-                    }
-
-                }
-                if(piece.IsKing){
-                    
-                    if (PieceColor){
-                        int PieceValue = BlackPieceBonuses["King"][piece.Square.Index];
-                        Evaluate+=PieceValue;
-                    }else{
-                        int PieceValue = WhitePieceBonuses["King"][piece.Square.Index];
-                        Evaluate-=PieceValue;
-                    }
-
-                }
-                
-            }
-        }
-        return Evaluate;
     }
     public float CalculateEndGameWeight(Board board){
         int pieceCount = 0;
@@ -198,7 +173,29 @@ public class MyBot : IChessBot
             pieceCount+=pieceList.Count;
         }
 
-        return pieceCount/64;
+        return 3/pieceCount;
+    }
+    public int CalculateScoreTable(Board board,bool botCol){
+        int eval=0;
+        int m=1;
+        if(!botCol){m=-1;}
+        PieceList[] PieceLists = board.GetAllPieceLists();
+        foreach(PieceList pieceList in PieceLists){
+            for(int i=0; i<pieceList.Count; i++){
+                Piece piece = pieceList.GetPiece(i);
+                PieceType pT = piece.PieceType;
+                bool PieceColor=piece.IsWhite;
+                int PieceValue;
+                if (PieceColor){
+                    PieceValue = (scoreTable[$"{pT}"])[piece.Square.Index]*m;
+                }else{
+                    PieceValue = flipDictionary(scoreTable[$"{pT}"])[piece.Square.Index]*m;
+                }
+                eval+=PieceValue;
+            }
+        }
+        
+        return eval;
     }
     public int Eval(Board board, bool botColor){
         if(board.IsInCheckmate()){
@@ -226,14 +223,20 @@ public class MyBot : IChessBot
                 }
             }
         }
-        return Evaluate + PieceBonus_OPENING(board)+ForceKingEval(board);
+        return Evaluate+ForceKingEval(board, botColor)+CalculateScoreTable(board, botColor);
     }
     public MinimaxResult Minimax(Board board, int depth, bool maximizingPlayer, int alpha, int beta)
     {
         int evaluation = Eval(board, maximizingPlayer);
         if (depth == 0 || board.IsInCheckmate() || board.IsDraw())
         {
-            return new MinimaxResult(evaluation, Move.NullMove);
+            if(!transpositionTable.ContainsKey(board.ZobristKey)){
+                MinimaxResult result = new MinimaxResult(evaluation, Move.NullMove);
+                transpositionTable[board.ZobristKey]=result;
+                return result;
+            }
+            return transpositionTable[board.ZobristKey];
+            
         }
 
         Move bestMove = Move.NullMove;
@@ -243,7 +246,13 @@ public class MyBot : IChessBot
             foreach (Move move in board.GetLegalMoves())
             {
                 board.MakeMove(move);
-                MinimaxResult result = Minimax(board, depth - 1, false, alpha, beta);
+                MinimaxResult result;
+                if(transpositionTable.ContainsKey(board.ZobristKey)){
+                    result = transpositionTable[board.ZobristKey];
+                }else{
+                    result = Minimax(board, depth - 1, false, alpha, beta);
+                }
+                
                 if (result.evaluation > bestEvaluation)
                 {
                     bestEvaluation = result.evaluation;
