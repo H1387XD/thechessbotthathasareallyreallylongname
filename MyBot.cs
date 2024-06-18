@@ -120,7 +120,8 @@ public class MyBot : IChessBot
         Random random = new Random();
         Move[] moves = board.GetLegalMoves();
         int randomNumber = random.Next(moves.Length);
-        MinimaxResult result = Minimax(board, 3, botIsWhite, int.MinValue, int.MaxValue);
+        transpositionTable.Clear();
+        MinimaxResult result = Minimax(board, 4, botIsWhite, int.MinValue, int.MaxValue);
         
         if(result.move==Move.NullMove){
             return moves[0];
@@ -271,7 +272,13 @@ public class MyBot : IChessBot
             foreach (Move move in board.GetLegalMoves())
             {
                 board.MakeMove(move);
-                MinimaxResult result = Minimax(board, depth - 1, true, alpha, beta);
+                MinimaxResult result;
+                if(transpositionTable.ContainsKey(board.ZobristKey)){
+                    result = transpositionTable[board.ZobristKey];
+                }else{
+                    result = Minimax(board, depth - 1, true, alpha, beta);
+                }
+                
                 if (result.evaluation < bestEvaluation)
                 {
                     bestEvaluation = result.evaluation;
